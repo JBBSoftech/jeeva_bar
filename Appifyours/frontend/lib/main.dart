@@ -467,7 +467,7 @@ class MyApp extends StatelessWidget {
 // API Configuration - Auto-updated with your server details
 class ApiConfig {
   static String get baseUrl => Environment.apiBase;
-  static const String adminObjectId = 'ADMIN_OBJECT_ID_HERE'; // Will be replaced during publish
+  static const String adminObjectId = '6950c65fdb677355a280ca99'; // Will be replaced during publish
   static const String appId = 'APP_ID_HERE'; // Will be replaced during publish
 }
 
@@ -526,7 +526,7 @@ class AdminManager {
   static Future<String?> _autoDetectAdminId() async {
     try {
       final response = await http.get(
-        Uri.parse('http://3.7.15.17/api/admin/app-info'),
+        Uri.parse('http://10.147.118.184:5000/api/admin/app-info'),
         headers: {'Content-Type': 'application/json'},
       );
       
@@ -701,7 +701,7 @@ class _SignInPageState extends State<SignInPage> {
     try {
       final adminId = await AdminManager.getCurrentAdminId();
       final response = await http.post(
-        Uri.parse('http://3.7.15.17/api/login'),
+        Uri.parse('http://10.147.118.184:5000/api/login'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': _emailController.text.trim(),
@@ -1312,15 +1312,18 @@ class _HomePageState extends State<HomePage> {
 
     switch (name) {
       case 'HeaderWidget':
-        // Static Header Widget - uses API data, matches preview alignment
-        final appName = (_dynamicStoreInfo['storeName'] ?? 'My Store').toString();
-        final bg = (_dynamicDesignSettings['headerColor'] ?? '#4fb322').toString();
+        // Dynamic Header Widget - prefers widget properties, falls back to API data
+        final appName = (props['appName'] ?? _dynamicStoreInfo['storeName'] ?? 'My Store').toString();
+        final logoAsset = (props['logoAsset'] ?? '').toString();
+        final bg = (props['backgroundColor'] ?? _dynamicDesignSettings['headerColor'] ?? '#4fb322').toString();
         final backgroundColor = _colorFromHex(bg);
-        final height = 60.0;
-        final textColor = Colors.white;
-        final fontSize = 16.0;
+        final height = double.tryParse(props['height']?.toString() ?? '') ?? 60.0;
+        final textColor = props['textColor'] != null ? _colorFromHex(props['textColor']) : Colors.white;
+        final fontSize = double.tryParse(props['fontSize']?.toString() ?? '') ?? 16.0;
         final fontWeight = FontWeight.bold;
-        final textAlign = 'left';
+        final textAlign = (props['alignment'] ?? props['textAlign'] ?? 'left').toString();
+        final logoHeight = double.tryParse(props['logoHeight']?.toString() ?? '') ?? 24.0;
+        final logoWidth = double.tryParse(props['logoWidth']?.toString() ?? '') ?? 24.0;
 
         return Container(
           width: double.infinity,
@@ -1338,7 +1341,21 @@ class _HomePageState extends State<HomePage> {
                            textAlign == 'right' ? MainAxisAlignment.end : MainAxisAlignment.start,
               children: [
                 if (textAlign != 'right')
-                  const Icon(Icons.store, size: 24, color: Colors.white),
+                  (logoAsset.isNotEmpty
+                      ? (logoAsset.startsWith('data:image/')
+                          ? Image.memory(
+                              base64Decode(logoAsset.split(',')[1]),
+                              width: logoWidth,
+                              height: logoHeight,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.network(
+                              logoAsset,
+                              width: logoWidth,
+                              height: logoHeight,
+                              fit: BoxFit.cover,
+                            ))
+                      : const Icon(Icons.store, size: 24, color: Colors.white)),
                 if (textAlign != 'right') const SizedBox(width: 6),
                 Text(
                   appName,
@@ -1352,7 +1369,21 @@ class _HomePageState extends State<HomePage> {
                 ),
                 if (textAlign == 'right') const SizedBox(width: 6),
                 if (textAlign == 'right')
-                  const Icon(Icons.store, size: 24, color: Colors.white),
+                  (logoAsset.isNotEmpty
+                      ? (logoAsset.startsWith('data:image/')
+                          ? Image.memory(
+                              base64Decode(logoAsset.split(',')[1]),
+                              width: logoWidth,
+                              height: logoHeight,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.network(
+                              logoAsset,
+                              width: logoWidth,
+                              height: logoHeight,
+                              fit: BoxFit.cover,
+                            ))
+                      : const Icon(Icons.store, size: 24, color: Colors.white)),
               ],
             ),
           ),
@@ -1555,29 +1586,31 @@ class _HomePageState extends State<HomePage> {
         return _buildDynamicProductGrid();
 
       case 'StoreInfoWidget':
-        // Static StoreInfo Widget - uses API data, matches preview exactly
-        final storeName = (_dynamicStoreInfo['storeName']?.toString().trim() ?? '');
-        final address = (_dynamicStoreInfo['address']?.toString().trim() ?? '');
-        final email = (_dynamicStoreInfo['email']?.toString().trim() ?? '');
-        final phone = (_dynamicStoreInfo['phone']?.toString().trim() ?? '');
-        final website = (_dynamicStoreInfo['website']?.toString().trim() ?? '');
-        final footerText = (_dynamicStoreInfo['footerText']?.toString().trim() ?? '');
-        final storeLogo = _dynamicStoreInfo['storeLogo'];
+        // Dynamic StoreInfo Widget - prefers widget properties, falls back to API data
+        final storeName = ((props['storeName'] ?? _dynamicStoreInfo['storeName'])?.toString().trim() ?? '');
+        final address = ((props['address'] ?? _dynamicStoreInfo['address'])?.toString().trim() ?? '');
+        final email = ((props['email'] ?? _dynamicStoreInfo['email'])?.toString().trim() ?? '');
+        final phone = ((props['phone'] ?? _dynamicStoreInfo['phone'])?.toString().trim() ?? '');
+        final website = ((props['website'] ?? _dynamicStoreInfo['website'])?.toString().trim() ?? '');
+        final footerText = ((props['footerText'] ?? _dynamicStoreInfo['footerText'])?.toString().trim() ?? '');
+        final storeLogo = (props['storeLogo'] ?? _dynamicStoreInfo['storeLogo']);
 
-        final textColor = Colors.black;
-        final iconColor = Colors.blue;
-        final backgroundColor = const Color(0xFFE3F2FD);
-        final borderRadius = 8.0;
+        final textColor = props['textColor'] != null ? _colorFromHex(props['textColor']) : Colors.black;
+        final iconColor = props['iconColor'] != null ? _colorFromHex(props['iconColor']) : Colors.blue;
+        final backgroundColor = props['backgroundColor'] != null ? _colorFromHex(props['backgroundColor']) : const Color(0xFFE3F2FD);
+        final borderRadius = double.tryParse(props['borderRadius']?.toString() ?? '') ?? 8.0;
+        final marginV = double.tryParse(props['margin']?.toString() ?? '') ?? 4.0;
+        final paddingV = double.tryParse(props['padding']?.toString() ?? '') ?? 16.0;
 
         return Container(
           width: double.infinity,
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          margin: EdgeInsets.symmetric(horizontal: 8, vertical: marginV),
           child: Card(
             elevation: 2,
             color: backgroundColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius)),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(paddingV),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -3164,19 +3197,19 @@ class _HomePageState extends State<HomePage> {
         ),
         BottomNavigationBarItem(
           icon: Badge(
-            label: Text('${_cartManager.items.length}'),
-            isLabelVisible: _cartManager.items.length > 0,
-            child: const Icon(Icons.shopping_cart),
-          ),
-          label: 'Cart',
-        ),
-        BottomNavigationBarItem(
-          icon: Badge(
             label: Text('${_wishlistManager.items.length}'),
             isLabelVisible: _wishlistManager.items.length > 0,
             child: const Icon(Icons.favorite),
           ),
           label: 'Wishlist',
+        ),
+        BottomNavigationBarItem(
+          icon: Badge(
+            label: Text('${_cartManager.items.length}'),
+            isLabelVisible: _cartManager.items.length > 0,
+            child: const Icon(Icons.shopping_cart),
+          ),
+          label: 'Cart',
         ),
         const BottomNavigationBarItem(
           icon: Icon(Icons.person),
